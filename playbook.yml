@@ -1,0 +1,58 @@
+---
+- hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+    - name: Ensure no apt-get process is running
+      command: "killall apt-get"
+      ignore_errors: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+    
+    - name: Install UFW
+      apt: 
+        name: ufw
+        state: present
+
+    - name: Copy HTML file
+      copy:
+        src: index.html
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Copy Nginx configuration file
+      copy:
+        src: nginx.conf
+        dest: /etc/nginx/sites-available/default
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Ensure symbolic link does not exist
+      command: "rm -f /etc/nginx/sites-enabled/default"
+      ignore_errors: yes
+
+    - name: Ensure firewall rules are configured
+      ufw:
+        rule: allow
+        name: 'Nginx Full'
+        state: enabled
+
+    - name: Start Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Test web server with curl
+      command: curl http://localhost
+      register: curl_output
+
+    - name: Print curl output
+      debug:
+        var: curl_output.stdout_lines
